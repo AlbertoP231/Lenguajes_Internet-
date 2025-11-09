@@ -17,6 +17,7 @@ namespace ReactVentas.Models
         public int? IdRol { get; set; }
         public string? Clave { get; set; }
         public bool? EsActivo { get; set; }
+        public DateTime? FechaCreacion { get; set; }
 
         public virtual Rol? IdRolNavigation { get; set; }
         public virtual ICollection<Venta> Venta { get; set; }

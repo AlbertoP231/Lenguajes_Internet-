@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReactVentas.Models;
-using ReactVentas.Models.DTO;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ReactVentas.Controllers
 {
@@ -11,29 +12,150 @@ namespace ReactVentas.Controllers
     public class SessionController : ControllerBase
     {
         private readonly DBREACT_VENTAContext _context;
+
         public SessionController(DBREACT_VENTAContext context)
         {
             _context = context;
         }
 
-        [HttpPost]
-        [Route("Login")]
-        public async Task<IActionResult> Login([FromBody] Dtosesion request)
+        private string EncriptarClave(string clave)
         {
-            Usuario usuario = new Usuario();
-            try
-            {
-                usuario = _context.Usuarios.Include(u => u.IdRolNavigation).Where(u => u.Correo == request.correo && u.Clave == request.clave).FirstOrDefault();
+            if (string.IsNullOrEmpty(clave))
+                return string.Empty;
 
-                if(usuario == null)
-                    usuario = new Usuario();
-
-                return StatusCode(StatusCodes.Status200OK, usuario);
-            }
-            catch
+            using (SHA256 sha256Hash = SHA256.Create())
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, usuario);
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(clave));
+                StringBuilder builder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+                return builder.ToString();
             }
         }
+
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] LoginRequest request)
+        {
+            try
+            {
+                Console.WriteLine("🔍 INICIANDO LOGIN...");
+
+                if (request == null || string.IsNullOrEmpty(request.correo) || string.IsNullOrEmpty(request.clave))
+                    return BadRequest("Credenciales inválidas");
+
+                // Encriptar la contraseña recibida
+                string claveEncriptada = EncriptarClave(request.clave);
+                Console.WriteLine($"🔐 Clave encriptada: {claveEncriptada}");
+                Console.WriteLine($"📧 Correo: {request.correo}");
+
+                var usuario = _context.Usuarios
+                    .Include(u => u.IdRolNavigation)
+                    .FirstOrDefault(u => u.Correo == request.correo && u.Clave == claveEncriptada && u.EsActivo == true);
+
+                Console.WriteLine($"👤 Usuario encontrado: {usuario != null}");
+
+                if (usuario == null)
+                {
+                    // DEBUG: Ver qué hay en la base de datos
+                    var usuarioPorCorreo = _context.Usuarios.FirstOrDefault(u => u.Correo == request.correo);
+                    if (usuarioPorCorreo != null)
+                    {
+                        Console.WriteLine($"🔍 Usuario en BD: {usuarioPorCorreo.Correo}, Clave en BD: {usuarioPorCorreo.Clave}");
+                        Console.WriteLine($"🔍 Clave encriptada nueva: {claveEncriptada}");
+                        Console.WriteLine($"🔍 Coinciden: {usuarioPorCorreo.Clave == claveEncriptada}");
+                    }
+                    return Unauthorized("Credenciales inválidas");
+                }
+
+                // Devuelvo un DTO con claves en camelCase para que el frontend (JS) encuentre `idUsuario`, `nombre`, etc.
+                var result = new
+                {
+                    idUsuario = usuario.IdUsuario,
+                    nombre = usuario.Nombre,
+                    correo = usuario.Correo,
+                    telefono = usuario.Telefono,
+                    idRol = usuario.IdRol,
+                    esActivo = usuario.EsActivo,
+                    idRolNavigation = usuario.IdRolNavigation != null
+                        ? new { idRol = usuario.IdRolNavigation.IdRol, descripcion = usuario.IdRolNavigation.Descripcion }
+                        : null
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"💥 ERROR LOGIN: {ex.Message}");
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+
+        [HttpPost("crear")]
+        public IActionResult CrearUsuario([FromBody] UsuarioCreateRequest request)
+        {
+            try
+            {
+                Console.WriteLine("🔍 INICIANDO CREACIÓN DE USUARIO...");
+
+                // Validaciones
+                if (request == null)
+                    return BadRequest("Datos inválidos");
+
+                if (string.IsNullOrEmpty(request.nombre) || string.IsNullOrEmpty(request.correo) || string.IsNullOrEmpty(request.clave))
+                    return BadRequest("Todos los campos son requeridos");
+
+                // Verificar si el correo ya existe (ignorar mayúsculas/minúsculas)
+                var usuarioExistente = _context.Usuarios
+                    .FirstOrDefault(u => u.Correo.ToLower() == request.correo.ToLower());
+
+                if (usuarioExistente != null)
+                    return BadRequest("El correo ya está registrado");
+
+                // Encriptar contraseña
+                string claveEncriptada = EncriptarClave(request.clave);
+                Console.WriteLine($"🔐 Nueva clave encriptada: {claveEncriptada}");
+
+                // Crear usuario (asigno a propiedades PascalCase)
+                var usuario = new Usuario
+                {
+                    Nombre = request.nombre,
+                    Correo = request.correo,
+                    Clave = claveEncriptada,
+                    IdRol = request.idRol,
+                    EsActivo = true,
+                    FechaCreacion = DateTime.Now
+                };
+
+                _context.Usuarios.Add(usuario);
+                _context.SaveChanges();
+
+                Console.WriteLine($"✅ USUARIO CREADO: {usuario.Nombre}, ID: {usuario.IdUsuario}");
+                return Ok($"Usuario {request.nombre} creado exitosamente");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"💥 ERROR CREAR: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"💥 INNER: {ex.InnerException.Message}");
+
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+    }
+
+    public class UsuarioCreateRequest
+    {
+        public string nombre { get; set; }
+        public string correo { get; set; }
+        public string clave { get; set; }
+        public int idRol { get; set; }
+    }
+
+    public class LoginRequest
+    {
+        public string correo { get; set; }
+        public string clave { get; set; }
     }
 }

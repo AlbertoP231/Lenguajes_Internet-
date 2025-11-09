@@ -6,12 +6,12 @@ import Swal from 'sweetalert2'
 
 const modeloUsuario = {
     idUsuario: 0,
-    nombre : "",
-    correo :"",
-    telefono :"",
-    idRol :0,
-    clave :"",
-    esActivo :true
+    nombre: "",
+    correo: "",
+    telefono: "",
+    idRol: 0,
+    clave: "",
+    esActivo: true
 }
 
 const Usuario = () => {
@@ -24,14 +24,14 @@ const Usuario = () => {
 
     const handleChange = (e) => {
 
-        console.log(e.target.value )
+        console.log(e.target.value)
 
         let value;
 
-        if (e.target.name == "idRol") {
-            value = e.target.value
-        } else if (e.target.name == "esActivo") {
-            value = (e.target.value == "true" ? true : false)
+        if (e.target.name === "idRol") {
+            value = parseInt(e.target.value, 10) || 0;
+        } else if (e.target.name === "esActivo") {
+            value = (e.target.value === "true");
         } else {
             value = e.target.value;
         }
@@ -86,7 +86,7 @@ const Usuario = () => {
             name: 'Rol',
             selector: row => row.idRolNavigation,
             sortable: true,
-            cell: row => (row.idRolNavigation.descripcion)
+            cell: row => (row.idRolNavigation ? row.idRolNavigation.descripcion : '')
         },
         {
             name: 'Estado',
@@ -143,26 +143,32 @@ const Usuario = () => {
 
     const abrirEditarModal = (data) => {
         setUsuario(data);
-        setVerModal(!verModal);
+        setVerModal(true);
     }
 
     const cerrarModal = () => {
         setUsuario(modeloUsuario)
-        setVerModal(!verModal);
+        setVerModal(false);
     }
 
     const guardarCambios = async () => {
 
-        delete usuario.idRolNavigation;
+        // No mutar el estado directamente
+        const payload = { ...usuario };
+        delete payload.idRolNavigation;
+
+        // Asegurarse que idRol sea número y esActivo booleano
+        payload.idRol = parseInt(payload.idRol, 10) || 0;
+        payload.esActivo = !!payload.esActivo;
 
         let response;
-        if (usuario.idUsuario == 0) {
+        if (payload.idUsuario === 0) {
             response = await fetch("api/usuario/Guardar", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json;charset=utf-8'
                 },
-                body: JSON.stringify(usuario)
+                body: JSON.stringify(payload)
             })
 
         } else {
@@ -171,17 +177,18 @@ const Usuario = () => {
                 headers: {
                     'Content-Type': 'application/json;charset=utf-8'
                 },
-                body: JSON.stringify(usuario)
+                body: JSON.stringify(payload)
             })
         }
 
         if (response.ok) {
             await obtenerUsuarios();
             setUsuario(modeloUsuario)
-            setVerModal(!verModal);
+            setVerModal(false);
 
         } else {
-            alert("error al guardar")
+            const text = await response.text();
+            Swal.fire('Error', text || 'error al guardar', 'error')
         }
 
     }
@@ -211,6 +218,8 @@ const Usuario = () => {
                                 'El usuario fue eliminado.',
                                 'success'
                             )
+                        } else {
+                            response.text().then(t => Swal.fire('Error', t || 'No se pudo eliminar', 'error'));
                         }
                     })
             }
@@ -225,7 +234,7 @@ const Usuario = () => {
                     Lista de Usuarios
                 </CardHeader>
                 <CardBody>
-                    <Button color="success" size="sm" onClick={() => setVerModal(!verModal)}>Nuevo Usuario</Button>
+                    <Button color="success" size="sm" onClick={() => { setUsuario(modeloUsuario); setVerModal(true); }}>Nuevo Usuario</Button>
                     <hr></hr>
                     <DataTable
                         columns={columns}
@@ -294,8 +303,8 @@ const Usuario = () => {
                             </FormGroup>
                         </Col>
                     </Row>
-                    
-                   
+
+
                 </ModalBody>
                 <ModalFooter>
                     <Button size="sm" color="primary" onClick={guardarCambios}>Guardar</Button>

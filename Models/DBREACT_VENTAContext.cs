@@ -173,8 +173,9 @@ namespace ReactVentas.Models
 
                 entity.Property(e => e.IdUsuario).HasColumnName("idUsuario");
 
+                // desired length
                 entity.Property(e => e.Clave)
-                    .HasMaxLength(40)
+                    .HasMaxLength(40)      // TEMP: match current DB schema
                     .IsUnicode(false)
                     .HasColumnName("clave");
 
