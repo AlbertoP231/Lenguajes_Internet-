@@ -10,18 +10,20 @@ namespace ReactVentas.Models
             DetalleVenta = new HashSet<DetalleVenta>();
         }
 
-        public int IdVenta { get; set; }
-        public string? NumeroDocumento { get; set; }
-        public string? TipoDocumento { get; set; }
-        public DateTime? FechaRegistro { get; set; }
-        public int? IdUsuario { get; set; }
-        public string? DocumentoCliente { get; set; }
-        public string? NombreCliente { get; set; }
-        public decimal? SubTotal { get; set; }
-        public decimal? ImpuestoTotal { get; set; }
-        public decimal? Total { get; set; }
+        public int idVenta { get; set; }
+        public string numeroDocumento { get; set; } = null!;
+        public string documentoCliente { get; set; } = null!;
+        public string nombreCliente { get; set; } = null!;
+        public string tipoDocumento { get; set; } = null!;
+        public int idUsuario { get; set; }
+        public int idCliente { get; set; }
+        public decimal subTotal { get; set; }
+        public decimal impuestoTotal { get; set; }
+        public decimal total { get; set; }
+        public DateTime fechaRegistro { get; set; }
 
-        public virtual Usuario? IdUsuarioNavigation { get; set; }
+        public virtual Usuario idUsuarioNavigation { get; set; } = null!;
+        public virtual Cliente idClienteNavigation { get; set; } = null!;
         public virtual ICollection<DetalleVenta> DetalleVenta { get; set; }
     }
 }

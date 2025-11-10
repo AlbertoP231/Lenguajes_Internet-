@@ -18,7 +18,6 @@ namespace ReactVentas.Controllers
         public VentaController(DBREACT_VENTAContext context)
         {
             _context = context;
-
         }
 
         [HttpGet]
@@ -39,7 +38,6 @@ namespace ReactVentas.Controllers
                     Precio = p.Precio
                 }).ToListAsync();
 
-
                 return StatusCode(StatusCodes.Status200OK, lista);
             }
             catch (Exception ex)
@@ -50,7 +48,8 @@ namespace ReactVentas.Controllers
 
         [HttpPost]
         [Route("Registrar")]
-        public IActionResult Registrar([FromBody] DtoVenta request) {
+        public IActionResult Registrar([FromBody] DtoVenta request)
+        {
             try
             {
                 string numeroDocumento = "";
@@ -75,6 +74,7 @@ namespace ReactVentas.Controllers
                     cmd.Parameters.Add("nombreCliente", SqlDbType.VarChar, 40).Value = request.nombreCliente;
                     cmd.Parameters.Add("tipoDocumento", SqlDbType.VarChar, 50).Value = request.tipoDocumento;
                     cmd.Parameters.Add("idUsuario", SqlDbType.Int).Value = request.idUsuario;
+                    cmd.Parameters.Add("idCliente", SqlDbType.Int).Value = request.idCliente; // ← AGREGAR ESTA LÍNEA
                     cmd.Parameters.Add("subTotal", SqlDbType.Decimal).Value = request.subTotal;
                     cmd.Parameters.Add("impuestoTotal", SqlDbType.Decimal).Value = request.igv;
                     cmd.Parameters.Add("total", SqlDbType.Decimal).Value = request.total;
@@ -86,17 +86,17 @@ namespace ReactVentas.Controllers
 
                 return StatusCode(StatusCodes.Status200OK, new { numeroDocumento = numeroDocumento });
             }
-            catch (Exception ex) {
-
+            catch (Exception ex)
+            {
                 var str = ex.Message;
                 return StatusCode(StatusCodes.Status500InternalServerError, new { numeroDocumento = "" });
             }
-
         }
 
         [HttpGet]
         [Route("Listar")]
-        public async Task<IActionResult> Listar() {
+        public async Task<IActionResult> Listar()
+        {
             string buscarPor = HttpContext.Request.Query["buscarPor"];
             string numeroVenta = HttpContext.Request.Query["numeroVenta"];
             string fechaInicio = HttpContext.Request.Query["fechaInicio"];
@@ -115,8 +115,9 @@ namespace ReactVentas.Controllers
                         .Include(d => d.DetalleVenta)
                         .ThenInclude(p => p.IdProductoNavigation)
                         .Where(v => v.FechaRegistro.Value.Date >= _fechainicio.Date && v.FechaRegistro.Value.Date <= _fechafin.Date)
-                        .Select( v=> new DtoHistorialVenta() { 
-                            FechaRegistro =  v.FechaRegistro.Value.ToString("dd/MM/yyyy"),
+                        .Select(v => new DtoHistorialVenta()
+                        {
+                            FechaRegistro = v.FechaRegistro.Value.ToString("dd/MM/yyyy"),
                             NumeroDocumento = v.NumeroDocumento,
                             TipoDocumento = v.TipoDocumento,
                             DocumentoCliente = v.DocumentoCliente,
@@ -125,7 +126,8 @@ namespace ReactVentas.Controllers
                             SubTotal = v.SubTotal.ToString(),
                             Impuesto = v.ImpuestoTotal.ToString(),
                             Total = v.Total.ToString(),
-                            Detalle = v.DetalleVenta.Select( d => new DtoDetalleVenta() { 
+                            Detalle = v.DetalleVenta.Select(d => new DtoDetalleVenta()
+                            {
                                 Producto = d.IdProductoNavigation.Descripcion,
                                 Cantidad = d.Cantidad.ToString(),
                                 Precio = d.Precio.ToString(),
@@ -162,15 +164,13 @@ namespace ReactVentas.Controllers
                         }).ToListAsync();
                 }
 
-
                 return StatusCode(StatusCodes.Status200OK, lista_venta);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 var str = ex.Message;
                 return StatusCode(StatusCodes.Status500InternalServerError, lista_venta);
             }
-            
-
         }
 
         [HttpGet]
@@ -191,22 +191,20 @@ namespace ReactVentas.Controllers
                                join p in _context.Productos on d.IdProducto equals p.IdProducto
                                where v.FechaRegistro.Value.Date >= _fechainicio.Date && v.FechaRegistro.Value.Date <= _fechafin.Date
                                select new DtoReporteVenta()
-                                 {
-                                     FechaRegistro = v.FechaRegistro.Value.ToString("dd/MM/yyyy"),
-                                     NumeroDocumento = v.NumeroDocumento,
-                                     TipoDocumento = v.TipoDocumento,
-                                     DocumentoCliente = v.DocumentoCliente,
-                                     NombreCliente = v.NombreCliente,
-                                     SubTotalVenta = v.SubTotal.ToString(),
-                                     ImpuestoTotalVenta = v.ImpuestoTotal.ToString(),
-                                     TotalVenta = v.Total.ToString(),
-                                     Producto = p.Descripcion,
-                                     Cantidad = d.Cantidad.ToString(),
-                                     Precio = d.Precio.ToString(),
-                                     Total = d.Total.ToString()
-                                 }).ToList();
-
-
+                               {
+                                   FechaRegistro = v.FechaRegistro.Value.ToString("dd/MM/yyyy"),
+                                   NumeroDocumento = v.NumeroDocumento,
+                                   TipoDocumento = v.TipoDocumento,
+                                   DocumentoCliente = v.DocumentoCliente,
+                                   NombreCliente = v.NombreCliente,
+                                   SubTotalVenta = v.SubTotal.ToString(),
+                                   ImpuestoTotalVenta = v.ImpuestoTotal.ToString(),
+                                   TotalVenta = v.Total.ToString(),
+                                   Producto = p.Descripcion,
+                                   Cantidad = d.Cantidad.ToString(),
+                                   Precio = d.Precio.ToString(),
+                                   Total = d.Total.ToString()
+                               }).ToList();
 
                 return StatusCode(StatusCodes.Status200OK, lista_venta);
             }
@@ -215,8 +213,6 @@ namespace ReactVentas.Controllers
                 var str = ex.Message;
                 return StatusCode(StatusCodes.Status500InternalServerError, lista_venta);
             }
-
-
         }
     }
 }

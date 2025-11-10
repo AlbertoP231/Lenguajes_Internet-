@@ -8,13 +8,13 @@ const modelo = {
     nombre: "",
     correo: "",
     idRolNavigation: {
-        idRol:0,
+        idRol: 0,
         descripcion: ""
     }
 }
 const NavBar = () => {
 
-    const { user} = useContext(UserContext);
+    const { user } = useContext(UserContext);
 
     const [dataUser, setDataUser] = useState(modelo)
 
@@ -24,7 +24,7 @@ const NavBar = () => {
 
     }, [])
     return (
-        
+
         <ul className="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
             <Link className="sidebar-brand d-flex align-items-center justify-content-center" to="/">
@@ -46,9 +46,11 @@ const NavBar = () => {
                     </NavLink>
                 </li>
             }
-           
+
 
             <hr className="sidebar-divider" />
+
+            {/* ADMINISTRACIÓN - Solo para Administradores */}
             {
                 (dataUser.idRolNavigation.descripcion == "Administrador") &&
                 <li className="nav-item">
@@ -60,11 +62,13 @@ const NavBar = () => {
                     <div id="collapseUsuario" className="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
                         <div className="bg-white py-2 collapse-inner rounded">
                             <NavLink to="/usuario" className="collapse-item">Usuarios</NavLink>
+                            <NavLink to="/clientes" className="collapse-item">Clientes</NavLink>
                         </div>
                     </div>
                 </li>
             }
-            
+
+            {/* INVENTARIO - Solo para Administradores */}
             {
                 (dataUser.idRolNavigation.descripcion == "Administrador") &&
                 <li className="nav-item">
@@ -82,8 +86,9 @@ const NavBar = () => {
                     </div>
                 </li>
             }
-           
 
+
+            {/* VENTAS - Para TODOS los roles (Admin, Empleado, Cliente) */}
             <li className="nav-item">
                 <a className="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseVenta"
                     aria-expanded="true" aria-controls="collapseVenta">
@@ -94,12 +99,20 @@ const NavBar = () => {
                     data-parent="#accordionSidebar">
                     <div className="bg-white py-2 collapse-inner rounded">
                         <NavLink to="/venta" className="collapse-item">Nueva Venta</NavLink>
-                        <NavLink to="/historialventa" className="collapse-item">Historial Venta</NavLink>
+                        {/* Historial de Ventas solo para Admin y Empleado */}
+                        {(dataUser.idRolNavigation.descripcion == "Administrador" || dataUser.idRolNavigation.descripcion == "Empleado") &&
+                            <NavLink to="/historialventa" className="collapse-item">Historial Venta</NavLink>
+                        }
+                        {/* Los Clientes solo ven "Mis Compras" */}
+                        {dataUser.idRolNavigation.descripcion == "Cliente" &&
+                            <NavLink to="/historialventa" className="collapse-item">Mis Compras</NavLink>
+                        }
                     </div>
                 </div>
             </li>
 
 
+            {/* REPORTES - Solo para Administradores */}
             {(dataUser.idRolNavigation.descripcion == "Administrador") &&
                 <li className="nav-item">
                     <a className="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseReporte"
@@ -115,7 +128,7 @@ const NavBar = () => {
                     </div>
                 </li>
             }
-            
+
 
 
             <hr className="sidebar-divider d-none d-md-block" />
@@ -125,7 +138,7 @@ const NavBar = () => {
             </div>
 
         </ul>
-        )
+    )
 }
 
 export default NavBar;

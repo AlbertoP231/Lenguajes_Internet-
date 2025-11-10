@@ -1,7 +1,10 @@
-﻿namespace ReactVentas.Models.DTO
+﻿using System.Collections.Generic;
+
+namespace ReactVentas.Models.DTO
 {
     public class DtoVenta
     {
+        public int idCliente { get; set; }
         public string documentoCliente { get; set; }
         public string nombreCliente { get; set; }
         public string tipoDocumento { get; set; }
