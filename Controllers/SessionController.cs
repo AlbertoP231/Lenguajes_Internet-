@@ -40,34 +40,18 @@ namespace ReactVentas.Controllers
         {
             try
             {
-                Console.WriteLine("🔍 INICIANDO LOGIN...");
-
                 if (request == null || string.IsNullOrEmpty(request.correo) || string.IsNullOrEmpty(request.clave))
                     return BadRequest("Credenciales inválidas");
 
                 // Encriptar la contraseña recibida
                 string claveEncriptada = EncriptarClave(request.clave);
-                Console.WriteLine($"🔐 Clave encriptada: {claveEncriptada}");
-                Console.WriteLine($"📧 Correo: {request.correo}");
 
                 var usuario = _context.Usuarios
                     .Include(u => u.IdRolNavigation)
                     .FirstOrDefault(u => u.Correo == request.correo && u.Clave == claveEncriptada && u.EsActivo == true);
 
-                Console.WriteLine($"👤 Usuario encontrado: {usuario != null}");
-
                 if (usuario == null)
-                {
-                    // DEBUG: Ver qué hay en la base de datos
-                    var usuarioPorCorreo = _context.Usuarios.FirstOrDefault(u => u.Correo == request.correo);
-                    if (usuarioPorCorreo != null)
-                    {
-                        Console.WriteLine($"🔍 Usuario en BD: {usuarioPorCorreo.Correo}, Clave en BD: {usuarioPorCorreo.Clave}");
-                        Console.WriteLine($"🔍 Clave encriptada nueva: {claveEncriptada}");
-                        Console.WriteLine($"🔍 Coinciden: {usuarioPorCorreo.Clave == claveEncriptada}");
-                    }
                     return Unauthorized("Credenciales inválidas");
-                }
 
                 // Devuelvo un DTO con claves en camelCase para que el frontend (JS) encuentre `idUsuario`, `nombre`, etc.
                 var result = new
@@ -87,7 +71,6 @@ namespace ReactVentas.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"💥 ERROR LOGIN: {ex.Message}");
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
@@ -97,8 +80,6 @@ namespace ReactVentas.Controllers
         {
             try
             {
-                Console.WriteLine("🔍 INICIANDO CREACIÓN DE USUARIO...");
-
                 // Validaciones
                 if (request == null)
                     return BadRequest("Datos inválidos");
@@ -115,15 +96,15 @@ namespace ReactVentas.Controllers
 
                 // Encriptar contraseña
                 string claveEncriptada = EncriptarClave(request.clave);
-                Console.WriteLine($"🔐 Nueva clave encriptada: {claveEncriptada}");
 
-                // Crear usuario (asigno a propiedades PascalCase)
+                // Crear usuario
                 var usuario = new Usuario
                 {
                     Nombre = request.nombre,
                     Correo = request.correo,
                     Clave = claveEncriptada,
                     IdRol = request.idRol,
+                    Telefono = request.telefono,
                     EsActivo = true,
                     FechaCreacion = DateTime.Now
                 };
@@ -131,15 +112,10 @@ namespace ReactVentas.Controllers
                 _context.Usuarios.Add(usuario);
                 _context.SaveChanges();
 
-                Console.WriteLine($"✅ USUARIO CREADO: {usuario.Nombre}, ID: {usuario.IdUsuario}");
                 return Ok($"Usuario {request.nombre} creado exitosamente");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"💥 ERROR CREAR: {ex.Message}");
-                if (ex.InnerException != null)
-                    Console.WriteLine($"💥 INNER: {ex.InnerException.Message}");
-
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
@@ -151,6 +127,7 @@ namespace ReactVentas.Controllers
         public string correo { get; set; }
         public string clave { get; set; }
         public int idRol { get; set; }
+        public string telefono { get; set; }
     }
 
     public class LoginRequest
