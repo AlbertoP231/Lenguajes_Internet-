@@ -3,7 +3,6 @@ import DataTable from 'react-data-table-component';
 import { Card, CardBody, CardHeader, Button, Modal, ModalHeader, ModalBody, Label, Input, FormGroup, ModalFooter, Row, Col } from "reactstrap"
 import Swal from 'sweetalert2'
 
-
 const modeloUsuario = {
     idUsuario: 0,
     nombre: "",
@@ -23,7 +22,6 @@ const Usuario = () => {
     const [verModal, setVerModal] = useState(false);
 
     const handleChange = (e) => {
-
         console.log(e.target.value)
 
         let value;
@@ -42,9 +40,8 @@ const Usuario = () => {
         })
     }
 
-
     const obtenerRoles = async () => {
-        let response = await fetch("api/rol/Lista");
+        let response = await fetch("/api/rol/Lista");
         if (response.ok) {
             let data = await response.json()
             setRoles(data)
@@ -52,7 +49,7 @@ const Usuario = () => {
     }
 
     const obtenerUsuarios = async () => {
-        let response = await fetch("api/usuario/Lista");
+        let response = await fetch("/api/usuario/Lista");
 
         if (response.ok) {
             let data = await response.json()
@@ -152,80 +149,121 @@ const Usuario = () => {
     }
 
     const guardarCambios = async () => {
-
-        // No mutar el estado directamente
-        const payload = { ...usuario };
-        delete payload.idRolNavigation;
-
-        // Asegurarse que idRol sea número y esActivo booleano
-        payload.idRol = parseInt(payload.idRol, 10) || 0;
-        payload.esActivo = !!payload.esActivo;
-
-        let response;
-        if (payload.idUsuario === 0) {
-            response = await fetch("api/usuario/Guardar", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json;charset=utf-8'
-                },
-                body: JSON.stringify(payload)
-            })
-
-        } else {
-            response = await fetch("api/usuario/Editar", {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json;charset=utf-8'
-                },
-                body: JSON.stringify(payload)
-            })
+        // Validaciones básicas
+        if (!usuario.nombre || !usuario.correo || !usuario.idRol) {
+            Swal.fire('Error', 'Nombre, correo y rol son obligatorios', 'error');
+            return;
         }
 
-        if (response.ok) {
-            await obtenerUsuarios();
-            setUsuario(modeloUsuario)
-            setVerModal(false);
+        // Para NUEVO usuario, usar la API de session/crear
+        if (usuario.idUsuario === 0) {
+            // Validar contraseña para nuevo usuario
+            if (!usuario.clave || usuario.clave.length < 6) {
+                Swal.fire('Error', 'La contraseña es obligatoria y debe tener al menos 6 caracteres', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/session/crear", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json;charset=utf-8'
+                    },
+                    body: JSON.stringify({
+                        nombre: usuario.nombre,
+                        correo: usuario.correo,
+                        clave: usuario.clave,
+                        idRol: usuario.idRol,
+                        telefono: usuario.telefono || ""
+                    })
+                });
+
+                const responseText = await response.text();
+                console.log('Respuesta del servidor:', responseText);
+
+                if (response.ok) {
+                    Swal.fire('Éxito', 'Usuario creado correctamente', 'success');
+                    await obtenerUsuarios();
+                    setUsuario(modeloUsuario);
+                    setVerModal(false);
+                } else {
+                    Swal.fire('Error', responseText, 'error');
+                }
+            } catch (error) {
+                console.error('Error de red:', error);
+                Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+            }
 
         } else {
-            const text = await response.text();
-            Swal.fire('Error', text || 'error al guardar', 'error')
-        }
+            // Para EDITAR usuario existente, mantener la lógica actual
+            const payload = { ...usuario };
+            delete payload.idRolNavigation;
 
+            payload.idRol = parseInt(payload.idRol, 10) || 0;
+            payload.esActivo = !!payload.esActivo;
+
+            // Si no se cambió la contraseña, enviar string vacío o null
+            if (!payload.clave) {
+                payload.clave = "";
+            }
+
+            try {
+                const response = await fetch("/api/usuario/Editar", {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json;charset=utf-8'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await obtenerUsuarios();
+                    setUsuario(modeloUsuario);
+                    setVerModal(false);
+                    Swal.fire('Éxito', 'Usuario actualizado correctamente', 'success');
+                } else {
+                    const text = await response.text();
+                    Swal.fire('Error', text || 'Error al actualizar', 'error');
+                }
+            } catch (error) {
+                console.error('Error de red:', error);
+                Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+            }
+        }
     }
 
     const eliminarUsuario = async (id) => {
-
         Swal.fire({
-            title: 'Esta seguro?',
-            text: "Desea eliminar el usuario",
+            title: '¿Está seguro?',
+            text: "¿Desea eliminar el usuario?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
-            confirmButtonText: 'Si, continuar',
+            confirmButtonText: 'Sí, continuar',
             cancelButtonText: 'No, volver'
         }).then((result) => {
             if (result.isConfirmed) {
-
-                const response = fetch("api/usuario/Eliminar/" + id, { method: "DELETE" })
+                fetch("/api/usuario/Eliminar/" + id, { method: "DELETE" })
                     .then(response => {
                         if (response.ok) {
-
                             obtenerUsuarios();
-
                             Swal.fire(
                                 'Eliminado!',
                                 'El usuario fue eliminado.',
                                 'success'
-                            )
+                            );
                         } else {
                             response.text().then(t => Swal.fire('Error', t || 'No se pudo eliminar', 'error'));
                         }
                     })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+                    });
             }
-        })
+        });
     }
-
 
     return (
         <>
@@ -249,66 +287,74 @@ const Usuario = () => {
 
             <Modal isOpen={verModal}>
                 <ModalHeader>
-                    Detalle Usuario
+                    {usuario.idUsuario === 0 ? 'Nuevo Usuario' : 'Editar Usuario'}
                 </ModalHeader>
                 <ModalBody>
                     <Row>
                         <Col sm={6}>
                             <FormGroup>
-                                <Label>Nombre</Label>
-                                <Input bsSize="sm" name="nombre" onChange={handleChange} value={usuario.nombre} />
+                                <Label>Nombre *</Label>
+                                <Input bsSize="sm" name="nombre" onChange={handleChange} value={usuario.nombre} required />
                             </FormGroup>
                         </Col>
                         <Col sm={6}>
                             <FormGroup>
-                                <Label>Correo</Label>
-                                <Input bsSize="sm" name="correo" onChange={handleChange} value={usuario.correo} />
+                                <Label>Correo *</Label>
+                                <Input bsSize="sm" name="correo" onChange={handleChange} value={usuario.correo} type="email" required />
                             </FormGroup>
                         </Col>
                     </Row>
                     <Row>
                         <Col sm={6}>
                             <FormGroup>
-                                <Label>Telefono</Label>
+                                <Label>Teléfono</Label>
                                 <Input bsSize="sm" name="telefono" onChange={handleChange} value={usuario.telefono} />
                             </FormGroup>
                         </Col>
                         <Col sm={6}>
                             <FormGroup>
-                                <Label>Rol</Label>
-                                <Input bsSize="sm" type={"select"} name="idRol" onChange={handleChange} value={usuario.idRol} >
+                                <Label>Rol *</Label>
+                                <Input bsSize="sm" type={"select"} name="idRol" onChange={handleChange} value={usuario.idRol} required>
                                     <option value={0}>Seleccionar</option>
-                                    {
-                                        roles.map((item) => (<option key={item.idRol} value={item.idRol}>{item.descripcion}</option>))
-                                    }
-
+                                    {roles.map((item) => (
+                                        <option key={item.idRol} value={item.idRol}>{item.descripcion}</option>
+                                    ))}
                                 </Input>
                             </FormGroup>
                         </Col>
                     </Row>
                     <Row>
-                        <Col sm="6" >
+                        <Col sm="6">
                             <FormGroup>
-                                <Label>Contraseña</Label>
-                                <Input bsSize="sm" name="clave" onChange={handleChange} value={usuario.clave} type="password" />
+                                <Label>Contraseña {usuario.idUsuario === 0 && '*'}</Label>
+                                <Input
+                                    bsSize="sm"
+                                    name="clave"
+                                    onChange={handleChange}
+                                    value={usuario.clave}
+                                    type="password"
+                                    placeholder={usuario.idUsuario === 0 ? "Mínimo 6 caracteres" : "Dejar vacío para no cambiar"}
+                                    required={usuario.idUsuario === 0}
+                                />
                             </FormGroup>
                         </Col>
-                        <Col sm="6" >
+                        <Col sm="6">
                             <FormGroup>
                                 <Label>Estado</Label>
-                                <Input bsSize="sm" type={"select"} name="esActivo" onChange={handleChange} value={usuario.esActivo} >
+                                <Input bsSize="sm" type={"select"} name="esActivo" onChange={handleChange} value={usuario.esActivo}>
                                     <option value={true}>Activo</option>
-                                    <option value={false}>No Activo</option>
+                                    <option value={false}>Inactivo</option>
                                 </Input>
                             </FormGroup>
                         </Col>
                     </Row>
-
-
+                    <small className="text-muted">* Campos obligatorios</small>
                 </ModalBody>
                 <ModalFooter>
-                    <Button size="sm" color="primary" onClick={guardarCambios}>Guardar</Button>
-                    <Button size="sm" color="danger" onClick={cerrarModal}>Cerrar</Button>
+                    <Button size="sm" color="primary" onClick={guardarCambios}>
+                        {usuario.idUsuario === 0 ? 'Crear Usuario' : 'Actualizar'}
+                    </Button>
+                    <Button size="sm" color="danger" onClick={cerrarModal}>Cancelar</Button>
                 </ModalFooter>
             </Modal>
         </>
